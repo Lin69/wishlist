@@ -1,17 +1,18 @@
 from aiohttp import web
 import asyncio
-import async_ORM.bd_handler
-from Authorisation.auth_client import AuthRPC
+# from async_ORM import bd_handler 
 from json_handler import jsoner
 import sys
 sys.path.append('../')
+from aioelasticsearch import Elasticsearch
 
 
 
 class Handler:
 
-    auth_ = AuthRPC()
-
+    def __init__(self,DB,Auth):
+        self.DB = DB
+        self.auth_=Auth
     # READY
     async def auth(self,request):
         try:
@@ -25,7 +26,7 @@ class Handler:
         token = self.auth_.register(user_id = vk_id, access_token = access_token)
 
         try: 
-            await bd_handler.bd_handler.authorisation(vk_id=vk_id)
+            await self.DB.authorisation(vk_id=vk_id)
         except:
             response = jsoner(status=400)
             return web.json_response(response)
@@ -50,14 +51,21 @@ class Handler:
             return web.json_response(response)
 
         try: 
-            result= await bd_handler.bd_handler.get_list_of_products(vk_id=vk_id)
+            result= await self.DB.get_list_of_products(vk_id=vk_id)
         except:
             response = jsoner(status=400)
             return web.json_response(response)
         
-        # TODO elasticsearch
+        data = []
+        async with Elasticsearch([{'host': 'localhost', 'port': 9200}]) as es:
+            for rec in result:
+                prod = {'product_id':rec['product_id'],'gift':rec['gift_id']}
+                res = await es.get(index='obi',doc_type='product', id=rec['product_id'])
+                prod.update(res['_source'])
+                data.append(prod)
 
-        return web.Response(status=200,text=f"{vk_id}, {token == 'allowed'}")
+        response = jsoner(status=200,whishlist=data)
+        return web.json_response(response)
 
     # TODO ELASTIC
     async def search(self,request):
@@ -96,7 +104,7 @@ class Handler:
             return web.json_response(response)
 
         try: 
-            await bd_handler.bd_handler.add_wish_to_list(vk_id=vk_id, product_id=product_id)
+            await self.DB.add_wish_to_list(vk_id=vk_id, product_id=product_id)
         except:
             response = jsoner(status=400)
             return web.json_response(response)
@@ -122,12 +130,21 @@ class Handler:
             return web.json_response(response)
 
         try: 
-            result= await bd_handler.bd_handler.get_list_of_products(vk_id=friend_id)
+            result= await self.DB.get_list_of_products(vk_id=friend_id)
         except:
             response = jsoner(status=400)
             return web.json_response(response)
 
-        return web.Response(status=200,text=f'OK')
+        data = []
+        async with Elasticsearch([{'host': 'localhost', 'port': 9200}]) as es:
+            for rec in result:
+                prod = {'product_id':rec['product_id'],'gift':rec['gift_id']}
+                res = await es.get(index='obi',doc_type='product', id=rec['product_id'])
+                prod.update(res['_source'])
+                data.append(prod)
+        
+        response = jsoner(status=200,whishlist=data,vk_id=vk_id)
+        return web.json_response(response)
 
     # READY
     async def gift(self,request):
@@ -148,7 +165,7 @@ class Handler:
             return web.json_response(response)
 
         try: 
-            await bd_handler.bd_handler.to_gift(my_id=vk_id,friend_id=friend_id,product_id=product_id)
+            await self.DB.to_gift(my_id=vk_id,friend_id=friend_id,product_id=product_id)
         except:
             response = jsoner(status=400)
             return web.json_response(response)
@@ -175,10 +192,12 @@ class Handler:
             return web.json_response(response)
 
         try: 
-            result= await bd_handler.bd_handler.watch_gift_list(my_id= vk_id,friend_id = friend_id)
+            result= await self.DB.watch_gift_list(my_id= vk_id,friend_id = friend_id)
         except:
-            return web.Response(status=400,text='HTTP 400 Bad Request')
-        return web.Response(status=200,text=f'OK')
+            response = jsoner(status=400)
+            return web.json_response(response)
+        response = jsoner(status=200)
+        return web.json_response(response)
 
     # TODO ELASTIC 
     async def giftlist(self, request):
@@ -197,7 +216,7 @@ class Handler:
             return web.json_response(response)
 
         try: 
-            result= await bd_handler.bd_handler.watch_gift_list(my_id= vk_id,friend_id = None)
+            result= await self.DB.watch_gift_list(my_id= vk_id,friend_id = None)
         except:
             response = jsoner(status=400)
             return web.json_response(response)
@@ -223,7 +242,7 @@ class Handler:
             return web.json_response(response)
 
         try: 
-            await bd_handler.bd_handler.to_gift(my_id=None,friend_id=friend_id,product_id=product_id)
+            await self.DB.to_gift(my_id=None,friend_id=friend_id,product_id=product_id)
         except:
             response = jsoner(status=400)
             return web.json_response(response)
@@ -249,7 +268,7 @@ class Handler:
             return web.json_response(response)
 
         try: 
-            await bd_handler.bd_handler.delete_wish(my_id=vk_id,product_id=product_id)
+            await self.DB.delete_wish(my_id=vk_id,product_id=product_id)
         except:
             response = jsoner(status=400)
             return web.json_response(response)
@@ -261,16 +280,19 @@ class Handler:
 
 
 
-app = web.Application()
-handler = Handler()
-app.add_routes([web.post('/signin', handler.auth),
-                web.get('/mywishlist', handler.my_wishlist),
-                web.post('/mywishlist', handler.adding_wish),
-                web.delete('/mywishlist', handler.cansel_wish),
-                web.get('/friendwishlist', handler.friend_wishlist),
-                web.post('/friendwishlist',handler.gift),
-                web.delete('/friendwishlist',handler.cancel_gift),
-                web.get('/giftlist',handler.giftlist),
-                web.get('/search',handler.search)])
 
-web.run_app(app)
+# app = web.Application()
+# handler = Handler()
+# app.add_routes([web.post('/signin', handler.auth),
+#                 web.get('/mywishlist', handler.my_wishlist),
+#                 web.post('/mywishlist', handler.adding_wish),
+#                 web.delete('/mywishlist', handler.cansel_wish),
+#                 web.get('/friendwishlist', handler.friend_wishlist),
+#                 web.post('/friendwishlist',handler.gift),
+#                 web.delete('/friendwishlist',handler.cancel_gift),
+#                 web.get('/giftlist',handler.giftlist),
+#                 web.get('/search',handler.search)])
+
+# async def ap():
+#     bd_handler.bd_handler.set_connection()
+#     web.run_app(app)
