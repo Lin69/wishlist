@@ -1,5 +1,8 @@
 from aiohttp import web
 import asyncio
+import async_ORM.bd_handler
+import sys
+sys.path.append('../')
 
 
 
@@ -12,6 +15,12 @@ class Handler:
             # TODO auth data
         except:
             return web.Response(status=400,text='HTTP 400 Bad Request')
+
+        try: 
+            await bd_handler.bd_handler.authorisation(vk_id=vk_id)
+        except:
+            return web.Response(status=400,text='HTTP 400 Bad Request')
+        #TODO
 
     async def my_wishlist(self,request):
         
@@ -29,7 +38,11 @@ class Handler:
         except:
             return web.Response(status=403,text='HTTP 403 Forbidden')
 
-        # TODO rest
+        try: 
+            result= await bd_handler.bd_handler.get_list_of_products(vk_id=vk_id)
+        except:
+            return web.Response(status=400,text='HTTP 400 Bad Request')
+            
         return web.Response(status=200,text=f"{vk_id}, {token == 'allowed'}")
     
     async def search(self,request):
@@ -69,7 +82,11 @@ class Handler:
         except:
             return web.Response(status=403,text='HTTP 403 Forbidden')
 
-        # TODO rest
+        try: 
+            await bd_handler.bd_handler.add_wish_to_list(vk_id=vk_id, product_id=product_id)
+        except:
+            return web.Response(status=400,text='HTTP 400 Bad Request')
+            
         return web.Response(status=200,text=f'OK')
 
     async def friend_wishlist(self,request):
@@ -89,7 +106,11 @@ class Handler:
         except:
             return web.Response(status=403,text='HTTP 403 Forbidden')
 
-        # TODO rest
+        try: 
+            result= await bd_handler.bd_handler.get_list_of_products(vk_id=friend_id)
+        except:
+            return web.Response(status=400,text='HTTP 400 Bad Request')
+
         return web.Response(status=200,text=f'OK')
 
     async def gift(self,request):
@@ -110,7 +131,34 @@ class Handler:
         except:
             return web.Response(status=403,text='HTTP 403 Forbidden')
 
-        # TODO rest
+        try: 
+            await bd_handler.bd_handler.to_gift(my_id=vk_id,friend_id=friend_id,product_id=product_id)
+        except:
+            return web.Response(status=400,text='HTTP 400 Bad Request')
+
+        return web.Response(status=200,text=f'OK')
+
+    async def user_gftlist(self,request):
+
+        try:
+            data = await request.json()
+            vk_id = data['vk_id']
+            token = data['access_token']
+            friend_id = data['friend_id']
+            # TODO auth data
+        except:
+            return web.Response(status=400,text='HTTP 400 Bad Request')
+
+        try: 
+            # TODO query validation 
+            pass
+        except:
+            return web.Response(status=403,text='HTTP 403 Forbidden')
+
+        try: 
+            result= await bd_handler.bd_handler.watch_gift_list(my_id= vk_id,friend_id = friend_id)
+        except:
+            return web.Response(status=400,text='HTTP 400 Bad Request')
         return web.Response(status=200,text=f'OK')
 
     async def giftlist(self, request):
@@ -129,7 +177,10 @@ class Handler:
         except:
             return web.Response(status=403,text='HTTP 403 Forbidden')
 
-        # TODO rest
+        try: 
+            result= await bd_handler.bd_handler.watch_gift_list(my_id= vk_id,friend_id = None)
+        except:
+            return web.Response(status=400,text='HTTP 400 Bad Request')
         return web.Response(status=200,text=f'OK')
 
     async def cancel_gift(self,request):
@@ -150,7 +201,10 @@ class Handler:
         except:
             return web.Response(status=403,text='HTTP 403 Forbidden')
 
-        # TODO rest
+        try: 
+            await bd_handler.bd_handler.to_gift(my_id=None,friend_id=friend_id,product_id=product_id)
+        except:
+            return web.Response(status=400,text='HTTP 400 Bad Request')
         return web.Response(status=200,text=f'OK')
 
     async def cansel_wish(self,request):
@@ -170,8 +224,13 @@ class Handler:
         except:
             return web.Response(status=403,text='HTTP 403 Forbidden')
 
-        # TODO rest
+        try: 
+            await bd_handler.bd_handler.delete_wish(my_id=vk_id,product_id=product_id)
+        except:
+            return web.Response(status=400,text='HTTP 400 Bad Request')
         return web.Response(status=200,text=f'OK')
+
+
 
 
 app = web.Application()
