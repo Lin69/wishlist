@@ -77,6 +77,3 @@ class AuthRPC:
     async def authorize(self, **kwargs):
         await self.check_conn()
         return await self.client.authorize(**kwargs)
-
-
-        

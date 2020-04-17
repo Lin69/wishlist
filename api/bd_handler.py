@@ -2,12 +2,15 @@ import asyncio
 import async_orm
 import asyncpg
 
+from settings import postgres_settings
 
 class bd_handler:
 
     @classmethod
-    async def set_connection(self, db='postgres', user_='postgres', password_='', host_='localhost',port_='5432'):
+    async def set_connection(self, db='postgres', user_='postgres', password_='', host_=postgres_settings['host'], port_=postgres_settings['port']):
+        print(f'attempting to connect at {host_}')
         await async_orm.PGConnector.connect_(db=db, user_=user_, password_=password_, host_=host_,port_=port_)
+        print(f'connected to db at {host_}')
         # PGConnector.conn = await asyncpg.connect(database=db,user=user_,password=password_,host=host_,port=port_)
 
     @classmethod
@@ -109,7 +112,11 @@ class bd_handler:
         if len(res) == 0:
             raise asyncpg.exceptions.NoDataFoundError('No users found')
         id = res[0]['user_id']
-        await self.addingwish(product_id=product_id,user_id=id)
+        res = await self.checking_log(product_id=product_id,user_id = id)
+        if len(res) ==0:
+            await self.addingwish(product_id=product_id,user_id=id)
+        else:
+            raise asyncpg.exceptions.DuplicateObjectError('You already added it')
 
     @classmethod
     async def to_gift(self,my_id,friend_id,product_id):

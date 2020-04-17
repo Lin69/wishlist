@@ -16,14 +16,14 @@ import pytest
 # def test_kek():
 #     assert 'foo neggs bar' == 'foo nspam bar'
 
-class Person():
-    def greet():
-        return 
+# class Person():
+#     def greet():
+#         return 
     
-@pytest.fixture
-def person():
-    return Person()
+# @pytest.fixture
+# def person():
+#     return Person()
 
-def test_greet(person):
-    greeting = Person.greet()
-    assert greeting == 'Hi there'
+# def test_greet(person):
+#     greeting = Person.greet()
+#     assert greeting == 'Hi there'

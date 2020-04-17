@@ -1,6 +1,7 @@
 import asyncpg
 import asyncio
 
+from settings import postgres_settings
 
 class PGConnector:
 
@@ -8,8 +9,10 @@ class PGConnector:
     database = 'postgres'
     user = "postgres"
     password = ""
-    host = "localhost"
-    port = "5432"
+    # host = "localhost"
+    # port = "5432"
+    host = postgres_settings['host']
+    port = postgres_settings['port']
 
     @classmethod
     async def connect_(self, db=database,
@@ -106,7 +109,7 @@ class queryset():
 
     def __aiter__(self):
         self.cache = []
-
+        self.current_item = 0
         return self
 
     async def __anext__(self):
